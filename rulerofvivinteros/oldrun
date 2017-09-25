@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+N, C = map(int, raw_input().split())
+fN = float(N)
+
+pN = 1<<N
+# throws[n][mask] is probability of getting mask of mask after rolling n dice
+throws = [[0.0]*pN]
+throws[0][0] = 1.0
+
+while len(throws) <= N:
+    old = throws[-1]
+    new = [0.0] * pN
+
+    for mask, p in enumerate(old):
+        for result in range(N):
+            new[mask | (1<<result)] += p
+    throws.append([p / fN for p in new])
+
+# probability of winning with i distinct dice kept and x more throws
+old = [0.0]*(N+1)
+old[N] = 1.0
+
+for _ in range(C):
+    new = [0.0]*(N+1)
+
+    for count in range(N+1):
+        numdice = N - count
+        for mask, p in enumerate(throws[numdice]):
+            mask |= ((1<<count) - 1)
+            count2 = bin(mask).count('1')
+            new[count] += p * old[count2]
+
+    # check if it is better to "forget" some dice, i.e. reroll them
+    best = 0.0
+    for i, val in enumerate(new):
+        best = new[i] = max(best, new[i])
+    old = new
+
+print '{:.4f}'.format(old[0] * 100)
+
+

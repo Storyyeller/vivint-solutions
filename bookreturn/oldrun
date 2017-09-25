@@ -1,0 +1,17 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+
+s = raw_input()
+floor = 0
+for i, c in enumerate(s):
+    if c == '+':
+        floor += 1
+    else:
+        if floor == 0:
+            print i+1
+        floor -= 1
+
+

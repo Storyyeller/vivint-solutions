@@ -1,0 +1,52 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+
+nweps, nblocks = map(int, raw_input().split())
+wlens = [len(raw_input()) for _ in range(nweps)]
+wlens = sorted(wlens)
+
+
+def getWMask(length, cols):
+    m1 = (1 << length) - 1
+    m2 = sum(1 << (i * cols) for i in range(length))
+    return length, m1, m2
+
+def solve(bits, wmasks, width, height):
+    if not wmasks:
+        return 1
+
+    wlen, m1, m2 = wmasks.pop()
+    # try it horizontally
+    for y in range(height):
+        for x in range(width - wlen + 1):
+            mask = m1 << (x + y * cols)
+
+            if not (mask & bits) and solve(bits | mask, wmasks[:], width, height):
+                return 1
+    # try it vertically
+    for y in range(height - wlen + 1):
+        for x in range(width):
+            mask = m2 << (x + y * cols)
+
+            if not (mask & bits) and solve(bits | mask, wmasks[:], width, height):
+                return 1
+    return 0
+
+
+
+for _ in range(nblocks):
+    cols, rows = map(int, raw_input().split())
+
+    bits = 0
+    for y in range(rows):
+        s = raw_input()
+        for i, c in enumerate(s):
+            if c == 'x':
+                bits |= 1 << (i + y * cols)
+
+    wmasks = [getWMask(wlen, cols) for wlen in wlens]
+    print solve(bits, wmasks, cols, rows)
+

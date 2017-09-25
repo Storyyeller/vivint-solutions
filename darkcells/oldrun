@@ -1,0 +1,46 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+from fractions import Fraction
+import sys
+import time
+
+P = int(raw_input())
+costs = map(int, raw_input().split())
+caps = map(int, raw_input().split())
+pairs = list(zip(costs, caps))
+
+subs = [(0, None)]
+while len(subs) <= P:
+    N = len(subs)
+    # best = float('inf')
+    best = (1<<64)-1
+    bestchain = None
+
+    for i, (cost, cap) in enumerate(pairs):
+        sind = N-cap
+        if sind < 0:
+            continue
+
+        scost, schain = subs[sind]
+        cost += scost
+        if best > cost:
+            best = cost
+            bestchain = i, schain
+    subs.append((best, bestchain))
+assert len(subs) == P+1
+
+cost, chain = subs[-1]
+print cost
+
+counts = [0]*len(costs)
+while chain is not None:
+    i, chain = chain
+    counts[i] += 1
+
+print ' '.join(map(str, counts))
+
+
+

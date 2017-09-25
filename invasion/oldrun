@@ -1,0 +1,154 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+
+import hashlib
+import hmac
+import json
+import sys
+import time
+
+escapes = {
+    '"': '"',
+    '\\': '\\',
+    '/': '/',
+    'b': '\b',
+    'f': '\f',
+    'n': '\n',
+    'r': '\r',
+    't': '\t',
+}
+def decode(s):
+    pos = 0
+    parts = []
+
+    pos2 = s.find('\\', pos)
+    while pos2 != -1:
+        parts.append(s[pos: pos2])
+
+        c = s[pos2+1]
+        if c == 'u':
+            code = int(s[pos2+2: pos2+6], 16)
+            parts.append(unichr(code))
+            pos = pos2 + 6
+        else:
+            parts.append(escapes[c])
+            pos = pos2 + 2
+
+        pos2 = s.find('\\', pos)
+
+    parts.append(s[pos:])
+    return ''.join(s)
+
+def find(s, pos, c):
+    i = s.find(c, pos)
+    return i if i != -1 else len(s)
+
+def getJSONstr(s, qpos):
+    parts = []
+
+    pos = qpos + 1
+    pos2 = min(find(s, pos, '"'), find(s, pos, '\\'))
+    parts.append(s[pos:pos2])
+
+    while s[pos2] == '\\':
+        c = s[pos2+1]
+        if c == 'u':
+            code = int(s[pos2+2: pos2+6], 16)
+            parts.append(unichr(code))
+            pos = pos2 + 6
+        else:
+            parts.append(escapes[c])
+            pos = pos2 + 2
+        pos2 = min(find(s, pos, '"'), find(s, pos, '\\'))
+        parts.append(s[pos:pos2])
+
+    assert s[pos2] == '"'
+    return ''.join(parts), pos2 + 1
+
+def stupidjson(s):
+    ids = []
+    messages = []
+
+    pos = 0
+    while 1:
+        pos = s.find('"', pos)
+        if pos == -1:
+            break
+
+        ids.append(s[pos+1:pos+65])
+        pos = s.find('"', pos + 66)
+
+        val, pos = getJSONstr(s, pos)
+        # print val
+        messages.append(val)
+    return zip(ids, messages)
+    # return zip(strs[::2], strs[1::2])
+
+
+
+
+def getNextID(id2, msg):
+    return hmac.new(id2.encode('utf8'), msg.encode('utf8'), hashlib.sha256).hexdigest()
+
+def isSuc(pair1, pair2):
+    id1, msg1 = pair1
+    id2, msg2 = pair2
+    return getNextID(id1, msg2) == id2
+
+
+start = sys.argv[1]
+try:
+    messages = stupidjson(sys.stdin.read())
+except BaseException as e:
+    time.sleep(8)
+
+
+# messages = json.load(sys.stdin)
+# messages = json.load(open('example', 'r'))
+pairs = set(map(tuple, messages))
+
+def getPrev(pair2):
+    for pair in pairs:
+        if isSuc(pair, pair2):
+            break
+    else:
+        return None
+    pairs.remove(pair)
+    return pair
+
+def getNext(pair):
+    for pair2 in pairs:
+        if isSuc(pair, pair2):
+            break
+    else:
+        return None
+    pairs.remove(pair2)
+    return pair2
+
+
+
+startp = [p for p in pairs if p[0] == start][0]
+message = [startp[1]]
+pairs.remove(startp)
+
+pair = getPrev(startp)
+while pair is not None:
+    message.append(pair[1])
+    pair = getPrev(pair)
+
+message = message[::-1]
+pair = getNext(startp)
+while pair is not None:
+    message.append(pair[1])
+    pair = getNext(pair)
+
+print ' '.join(message).encode('utf8')
+
+
+
+
+
+

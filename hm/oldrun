@@ -1,0 +1,152 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+import collections
+import re
+import sys
+import time
+sys.setrecursionlimit(5000)
+
+REGEX = re.compile(r'\s*(\(|\)|\w+)')
+def tokenize(s):
+    pos = 0
+    while pos < len(s):
+        match = REGEX.match(s, pos)
+        pos = match.end()
+        yield match.group(1)
+
+
+
+
+class Var(collections.namedtuple('Var', 'name')):
+    def subs(self, name, repl):
+        if name == self.name:
+            return repl
+        return self
+
+    def write(self):
+        return self.name
+
+class Func(collections.namedtuple('Func', 'arg ret')):
+    def subs(self, name, repl):
+        return Func(self.arg.subs(name, repl), self.ret.subs(name, repl))
+
+    def write(self):
+        return '(lam ', self.arg, ' ', self.ret, ')'
+
+class Bool(collections.namedtuple('Bool', '')):
+    def subs(self, name, repl):
+        return self
+
+    def write(self):
+        return 'bool'
+
+class Int(collections.namedtuple('Int', '')):
+    def subs(self, name, repl):
+        return self
+
+    def write(self):
+        return 'int'
+
+
+BOOL = Bool()
+INT = Int()
+
+count = 0
+def newVar():
+    global count
+    count += 1
+    return Var('v' + str(count))
+
+
+
+
+ADD = Func(INT, Func(INT, INT))
+GT = Func(INT, Func(INT, BOOL))
+ifv = newVar()
+IF = Func(BOOL, Func(ifv, Func(ifv, ifv)))
+fixv = newVar()
+FIX = Func(Func(fixv, fixv), fixv)
+STD = {'add': ADD, 'gt': GT, 'if': IF, 'fix': FIX, 'true': BOOL, 'false': BOOL}
+
+
+def parseAndGetType(tokens, env, outcons):
+    tok = next(tokens)
+    if tok == '(':
+        t = parseAndGetType(tokens, env, outcons)
+        # next(tokens)
+        assert next(tokens) == ')'
+        return t
+    elif tok == 'lam':
+        name = next(tokens)
+        env2 = env.copy()
+        env2[name] = var = newVar()
+        assert len(env2) < 64
+
+        t = parseAndGetType(tokens, env2, outcons)
+        return Func(var, t)
+    elif tok == 'app':
+        t1 = parseAndGetType(tokens, env, outcons)
+        t2 = parseAndGetType(tokens, env, outcons)
+        v = newVar()
+        outcons.append((t1, Func(t2, v)))
+        return v
+    else:
+        return env.get(tok, INT)
+
+
+def unify(t1, t2, outsubs):
+    if t1 == t2:
+        return
+    if isinstance(t1, Func) and isinstance(t2, Func):
+
+        oldlen = len(outsubs)
+        unify(t1.arg, t2.arg, outsubs)
+        r1, r2 = t1.ret, t2.ret
+        for substitution in outsubs[oldlen:]: # only get new subs
+            r1 = r1.subs(*substitution)
+            r2 = r2.subs(*substitution)
+        unify(r1, r2, outsubs)
+
+    elif isinstance(t1, Var):
+        outsubs.append((t1.name, t2))
+    elif isinstance(t2, Var):
+        outsubs.append((t2.name, t1))
+    else:
+        assert 0, 'type error'
+
+
+def getType(tokens):
+    cons = []
+    t = parseAndGetType(tokens, STD, cons)
+
+    while cons:
+        lhs, rhs = cons.pop()
+        subs = []
+        unify(lhs, rhs, subs)
+
+        for substitution in subs:
+            t = t.subs(*substitution)
+            cons = [(lhs.subs(*substitution), rhs.subs(*substitution)) for lhs, rhs in cons]
+
+    return t
+
+def printType(t):
+    out = ''
+    stack = [t]
+    while stack:
+        t = stack.pop()
+        if isinstance(t, tuple):
+            stack.extend(t.write()[::-1])
+        else:
+            out += t
+    return out
+
+
+for line in sys.stdin:
+    line = line.strip()
+
+    t = getType(tokenize(line))
+    print printType(t)

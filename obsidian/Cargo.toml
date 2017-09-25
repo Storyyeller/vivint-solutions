@@ -1,0 +1,6 @@
+[package]
+name = "boxes"
+version = "0.1.0"
+authors = ["Robert Grosse <n210241048576@gmail.com>"]
+
+[dependencies]

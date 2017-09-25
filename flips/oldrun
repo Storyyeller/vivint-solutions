@@ -1,0 +1,19 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+import collections
+
+rows, cols = map(int, raw_input().split())
+ints = [int(raw_input().replace(' ',''), 2) for _ in range(rows)]
+
+mask = (1<<cols) - 1
+
+c = collections.Counter(ints)
+c.update(mask - i for i in ints)
+
+answer, count = max(c.items(), key=lambda t:(t[1], -bin(t[0]).count('1')))
+print count
+print ' '.join(str(col) for col in range(cols) if (answer >> (cols - col - 1)) & 1)
+

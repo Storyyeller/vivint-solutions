@@ -1,0 +1,78 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+
+import sys
+
+width, height, tolerance = map(int, sys.stdin.readline().split())
+
+pixels = set()
+for row in range(height):
+    for col, val in enumerate(sys.stdin.readline().split()):
+        if val == '1':
+            pixels.add((row, col))
+
+# union data
+parents = {}
+roots = {} # coord -> [rank, x1, y1, x2, y2]
+
+def getRoot(p):
+    parent = parents.get(p, p)
+    while parent != p:
+        p = parent
+        parent = parents.get(p, p)
+
+    if parent not in roots:
+        x, y = parent
+        roots[parent] = [0, x, y, x, y]
+    return parent
+
+def merge(root1, root2):
+    if root1 == root2:
+        return root1
+
+    rank, x1, y1, x2, y2 = roots[root1]
+    rankb, x1b, y1b, x2b, y2b = roots[root2]
+
+    x1 = min(x1, x1b)
+    y1 = min(y1, y1b)
+    x2 = max(x2, x2b)
+    y2 = max(y2, y2b)
+
+    if rankb > rank:
+        rank = rankb
+        root1, root2 = root2, root1
+    elif rankb == rank:
+        rank += 1
+
+    del roots[root2]
+    roots[root1] = [rank, x1, y1, x2, y2]
+    parents[root2] = root1
+    return root1
+
+
+for row in range(height):
+    for col in range(width):
+        p = row, col
+        if p not in pixels:
+            continue
+
+        root = getRoot(p)
+        for y in range(-tolerance, tolerance+1):
+            t = tolerance - abs(y)
+            for x in range(-t, t+1):
+                p2 = row+y, col+x
+                if p2 not in pixels:
+                    continue
+
+                root = merge(root, getRoot(p2))
+
+for data in roots.values():
+    rank, x1, y1, x2, y2 = data
+    # output coords in reverse order
+    print y1, x1, y2, x2
+
+
+

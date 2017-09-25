@@ -1,0 +1,41 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+import collections
+import sys
+
+training = []
+unknowns = []
+
+for line in sys.stdin:
+    parts = line.split()
+    lbl = parts.pop()
+    vec = map(float, parts)
+    if lbl == '?':
+        unknowns.append(vec)
+    else:
+        training.append((vec, lbl))
+
+def dist(v1, v2):
+    return sum((x-y)*(x-y) for x,y in zip(v1, v2))
+
+
+
+for vec in unknowns:
+    neighbors = min(training, key=lambda (v, lbl): dist(vec, v))
+    print neighbors[1]
+    # neighbors = sorted(training, key=lambda (v, lbl): dist(vec, v))
+    # print collections.Counter(p[1] for p in neighbors[:2]).most_common(1)[0][0]
+    # print [p[1] for p in neighbors[:7]]
+
+
+# expected:
+
+# nightmaresobs
+# other
+# wildone
+# undead
+# other
+

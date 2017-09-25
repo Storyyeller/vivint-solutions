@@ -1,0 +1,79 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+import sys
+
+caps = map(int, sys.stdin.readline().split())
+horses = [map(int, line.split()) for line in sys.stdin.readlines()]
+
+# state: tuple(tuple(int, int)) duration, level sorted asc
+def advanceState(state, time):
+    return tuple((t - time, lvl) for t, lvl in state if t > time)
+
+def advanceAll(bests, diff):
+    newbests = {}
+    for state, val in bests.items():
+        updateBest(newbests, advanceState(state, diff), val)
+    return newbests
+
+
+def updateBest(d, key, val):
+    if key not in d or d[key][0] > val[0]:
+        d[key] = val
+
+
+bests = {(): (0, None)}
+time = 0
+
+for i, (arr, dur) in sorted(enumerate(horses), key=lambda (i, p):p):
+    newbests = {}
+
+    # elapse time, if necessary
+    if arr > time:
+        bests = advanceAll(bests, arr - time)
+        time = arr
+    assert arr == time
+
+    # now process horse i
+    for state, (score, solution) in bests.items():
+        curcaps = caps[:]
+        for _, lvl in state:
+            curcaps[lvl] -= 1
+        assert(min(curcaps) >= 0)
+
+        for lvl, cap in enumerate(curcaps):
+            if not cap:
+                continue
+
+            state2 = tuple(sorted(state + ((dur, lvl),)))
+            score2 = score + dur * lvl
+            solution2 = (i, lvl), solution
+            updateBest(newbests, state2, (score2, solution2))
+    bests = newbests
+
+bests = advanceAll(bests, float('inf'))
+assert len(bests) == 1
+
+score, solution = bests[()]
+pairs = []
+while solution is not None:
+    (i, lvl), solution = solution
+    pairs.append((i+1, lvl+1))
+
+for i, lvl in sorted(pairs):
+    print i, lvl
+
+
+
+
+
+
+
+
+
+
+
+
+

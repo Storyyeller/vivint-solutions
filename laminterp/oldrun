@@ -1,0 +1,120 @@
+#!/usr/bin/python
+
+# To solve this problem, make the './run' executable handle any
+# appropriate command line arguments and stdin and output the
+# solution to stdout.
+import re
+import sys
+import time
+sys.setrecursionlimit(5000)
+
+REGEX = re.compile(r'\s*(\(|\)|\w+)')
+
+def tokenize(s):
+    pos = 0
+    while pos < len(s):
+        match = REGEX.match(s, pos)
+        pos = match.end()
+        # print 'yield', match.group(1)
+        yield match.group(1)
+
+#debugging
+def printAST(ast):
+    tag = ast[0]
+    if tag == 'abs':
+        _, var, body = ast
+        return '\{}.{}'.format(var, printAST(body))
+    elif tag == 'app':
+        _, lhs, rhs = ast
+        return '({} {})'.format(printAST(lhs), printAST(rhs))
+    else:
+        return ast[1]
+
+def parseExpr(tokens, counter):
+    t = next(tokens)
+    if t == '(':
+        e = parseExpr(tokens, counter)
+        # next(tokens)
+        assert next(tokens) == ')'
+        return e
+    elif t == 'lam':
+        var = next(tokens)
+        return 'abs', var, parseExpr(tokens, counter)
+    elif t == 'app':
+        return 'app', parseExpr(tokens, counter), parseExpr(tokens, counter)
+    else:
+        return 'var', t
+
+ADD = lambda x: lambda y: (x+y)
+GT = lambda x: lambda y: x>y
+IF = lambda x: lambda y: lambda z: y if x else z
+
+STD = {'add': ADD, 'gt': GT, 'if': IF, 'true': True, 'false': False}
+
+
+def evalAST(ast, env):
+    stack = [('eval', (ast, env))]
+
+    while stack:
+        command, args = stack.pop()
+        if command == 'eval':
+            ast, env = args
+            if ast[0] == 'abs':
+                _, var, body = ast
+                stack.append(('return', ('lambda', var, body, env)))
+            elif ast[0] == 'app':
+                _, lhs, rhs = ast
+                stack.append(('eval2', (rhs, env)))
+                stack.append(('eval', (lhs, env)))
+            else:
+                assert ast[0] == 'var'
+                _, name = ast
+                if name in env:
+                    val = env[name]
+                else:
+                    val = int(name)
+
+
+                stack.append(('return', val))
+        elif command == 'return':
+            returned_val = args
+            if not stack:
+                return returned_val
+
+            # find what to return to and update it
+            command, args = stack.pop()
+            if command == 'eval2':
+                rhs, env = args
+                stack.append(('eval3', returned_val))
+                stack.append(('eval', (rhs, env)))
+            elif command == 'eval3':
+                e1 = args
+                e2 = returned_val
+
+                # check if function to be called is our lambda
+                if type(e1) is tuple:
+                    tag, var, body, env = e1
+                    assert tag == 'lambda'
+                    env = env.copy()
+                    env[var] = e2
+                    # print 'evaling with env', {k:v for k,v in env.items() if k not in 'gt add if true false'.split()}
+                    # print '   body', printAST(body)
+
+                    stack.append(('eval', (body, env)))
+                else:
+                    result = e1(e2)
+                    stack.append(('return', result))
+        else:
+            assert 0
+    assert 0
+
+insource = sys.stdin
+# insource = open('input', 'r')
+for line in insource:
+    line = line.strip()
+
+    c = None
+    ast = parseExpr(tokenize(line), c)
+    result = evalAST(ast, STD)
+    assert isinstance(result, (int, long))
+    print str(result).strip('L')
